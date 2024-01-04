@@ -3,13 +3,14 @@
 {% block content %}
 
 	{% for post in posts %}
-		<article class="media content-section">
+		<article class="media content-section" style="display: flex;" >
+			<img class="rounded-circle article-img"  src="{{ url_for('static', filename='profile_img/') + post.Author.image_file}}" alt="">
 			<div class="media-body">
 				<div class="article-metadata">
-					<a href="#" class="mr-2">{{ post.author }}</a>
-					<small class="text-muted">{{ post.date_posted }}</small>
+					<a href="#" class="mr-2">{{ post.Author.username }}</a>
+					<small class="text-muted">{{ post.date_posted.strftime('%T-%m-%d') }}</small>
 				</div>
-				<h2><a href="#" class="article-title">{{ post.title }}</a></h2>
+				<h2><a href="{{ url_for('post', post_id=post.id)}}" class="article-title">{{ post.title }}</a></h2>
 				<p class="article-content">{{ post.content }}</p>
 			</div>
 		</article>
