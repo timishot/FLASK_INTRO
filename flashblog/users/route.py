@@ -16,7 +16,7 @@ def before_request():
 @users.route('/unconfirmed')
 def unconfirmed():
 	if current_user.is_anonymous() or current_user.confirmed:
-		 return redirect(url_for('main.home'))
+		return redirect(url_for('main.home'))
 	return render_template('auth/unconfirmed.html')
 
 @users.route('/confirm')
