@@ -4,10 +4,29 @@ from flashblog import db, bcrypt
 from flashblog.models import User, Post
 from flashblog.users.forms import (RegistrationForm, LoginForm, UpdateAccountForm,
                                    RequestResetForm, ResetPasswordForm)
-from flashblog.users.utils import save_picture, send_reset_email
+from flashblog.users.utils import save_picture, send_reset_email, send_email
 
 users = Blueprint('users', __name__)
 
+@users.before_request
+def before_request():
+	if current_user.is_authenticated and not current_user.confirmed and request.endpoint[:5] != 'users.':
+		return redirect(url_for('users.unconfirmed'))
+
+@users.route('/unconfirmed')
+def unconfirmed():
+	if current_user.is_anonymous() or current_user.confirmed:
+		 return redirect(url_for('main.home'))
+	return render_template('auth/unconfirmed.html')
+
+@users.route('/confirm')
+@login_required
+def resend_confirmation():
+	token = current_user.generate_confirmation_token()
+	send_email('auth/email/confirm',
+	'Confirm Your Account', user=current_user, token=token)
+	flash('A new confirmation email has been sent to you by email.')
+	return redirect(url_for('main.home'))
 
 @users.route("/register", methods=['POST', 'GET'])
 def register():
@@ -19,7 +38,11 @@ def register():
 		user = User(username=form.username.data, email=form.email.data, password=hash_password)
 		db.session.add(user)
 		db.session.commit()
-		flash(f'Your account has been created! you are now able to log in', 'success')
+		token = user.get_reset_token()
+		send_email(user.email, 'Confirm Your Account',
+'auth/email/confirm', user=user, token=token)
+		flash('A confirmation email has been sent to you by email.')
+		# flash(f'Your account has been created! you are now able to log in', 'success')
 		return redirect(url_for('users.login'))
 	return render_template('register.html', title='Register', form=form)
 
@@ -101,3 +124,15 @@ def reset_token(token):
 		flash(f'Your password has been updated! you are now able to log in', 'success')
 		return redirect(url_for('users.login'))
 	return render_template('reset_token.html', title='Reset Password', form=form)
+
+@users.route("/confirm/<token>", methods=['GET', 'POST'])
+@login_required
+def confirm(token):
+    if current_user.confirmed:
+        return redirect(url_for('main.home'))
+    if current_user.confirm(token):
+        db.session.commit()
+        flash('You have confirmed your account. Thanks!')
+    else:
+        flash('The confirmation link is invalid or has expired.')
+    return redirect(url_for('users.home'))

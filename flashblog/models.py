@@ -1,6 +1,6 @@
 from flashblog import db, login_manager, app
 # Correct import statement
-from itsdangerous import TimedSerializer as Serializer
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 
 
 from datetime import datetime
@@ -16,6 +16,7 @@ class User(db.Model, UserMixin):
 	email = db.Column(db.String(120),unique=True, nullable=False)
 	image_file =  db.Column(db.String(255), nullable=False, default='default.jpg')
 	password = db.Column(db.String(60), nullable=False)
+	confirmed = db.Column(db.Boolean, default=False)
 	posts = db.relationship('Post', backref='Author', lazy=True)
 
 	def get_reset_token(self, expires_sec=1800):
@@ -33,6 +34,19 @@ class User(db.Model, UserMixin):
 
 	def __repr__(self):
 		return f"user('{self.username}', '{self.email}', '{self.image_file}')"
+	
+	
+	def confirm(self, token):
+		s = Serializer(app.config['SECRET_KEY'])
+		try:
+			data = s.loads(token)
+		except:
+			return False
+		if data.get('confirm') != self.id:
+			return False
+		self.confirmed = True
+		db.session.add(self)
+		return True
 
 class Post(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
